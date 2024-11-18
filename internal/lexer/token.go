@@ -21,6 +21,7 @@ const (
 	MULTILINE_STRING
 	TAG
 	FLOW_DELIMITER
+	NEW_LINE
 )
 
 var TYPESNAMES = map[TokenType]string{
@@ -40,6 +41,7 @@ var TYPESNAMES = map[TokenType]string{
 	TAG:              "TAG",
 	FLOW_DELIMITER:   "FLOW_DELIMITER",
 	SCALAR:           "SCALAR",
+	NEW_LINE:         "NEW_LINE",
 }
 
 type Token struct {
@@ -166,6 +168,13 @@ func scalarToken(level int, value string) *Token {
 	return &Token{
 		Type:  SCALAR,
 		Value: value,
+		Level: level,
+	}
+}
+
+func newLineToken(level int) *Token {
+	return &Token{
+		Type:  NEW_LINE,
 		Level: level,
 	}
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"yaml/internal/lexer"
+	"github.com/demidshumakher/yaml/internal/lexer"
 )
 
 func main() {

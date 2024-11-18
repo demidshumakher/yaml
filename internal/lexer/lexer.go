@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -132,7 +131,6 @@ func (l *Lexer) calculateIndentLevel() {
 	if l.context.previousIndentLevel == 0 {
 		l.context.indentNum = n
 	}
-	fmt.Println(l.context.previousIndentLevel, l.context.indentNum, n)
 	current := 0
 	if n != 0 {
 		// todo fix
@@ -146,6 +144,7 @@ func (l *Lexer) scanNewLine() {
 	l.context.pos.line++
 	l.context.previousIndentLevel = l.context.pos.indentLevel
 	l.calculateIndentLevel()
+	l.addToken(newLineToken(l.context.pos.indentLevel))
 }
 
 func (l *Lexer) scanDocumentEnd() {
