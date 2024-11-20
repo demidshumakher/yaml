@@ -44,6 +44,10 @@ var TYPESNAMES = map[TokenType]string{
 	NEW_LINE:         "NEW_LINE",
 }
 
+func (t TokenType) String() string {
+	return TYPESNAMES[t]
+}
+
 type Token struct {
 	Value string
 	Type  TokenType
@@ -51,7 +55,7 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf(" { %s\t%s\t%d } ", t.Value, TYPESNAMES[t.Type], t.Level)
+	return fmt.Sprintf(" { %s\t%s\t%d } ", t.Value, t.Type, t.Level)
 }
 
 func flowMapStartToken(level int) *Token {

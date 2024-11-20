@@ -19,10 +19,11 @@ type context struct {
 	previousChar        rune
 	previousIndentLevel int
 	indentNum           int
+	characterChecked    bool
 }
 
 type Lexer struct {
-	Tokens  []*Token
+	tokens  []*Token
 	buffer  []rune
 	context context
 	index   int
@@ -33,9 +34,9 @@ var whitespaces = []rune{'\x20', '\x09', '\n', '\r'}
 func New(src []rune) *Lexer {
 	return &Lexer{
 		buffer: src,
-		Tokens: []*Token{},
+		tokens: []*Token{},
 		context: context{
-			isFirstCharAtLine: false,
+			isFirstCharAtLine: true,
 			isAnchor:          false,
 			isFlow:            0,
 			previousChar:      0,
@@ -51,6 +52,7 @@ func New(src []rune) *Lexer {
 
 func (l *Lexer) nextChar() rune {
 	l.index++
+	l.context.characterChecked = false
 	return l.buffer[l.index-1]
 }
 
@@ -83,7 +85,7 @@ func (l *Lexer) skipChar(n int) {
 }
 
 func (l *Lexer) addToken(token *Token) {
-	l.Tokens = append(l.Tokens, token)
+	l.tokens = append(l.tokens, token)
 }
 
 func (l *Lexer) scanFlowMapStart() {
@@ -147,13 +149,17 @@ func (l *Lexer) scanNewLine() {
 	l.addToken(newLineToken(l.context.pos.indentLevel))
 }
 
-func (l *Lexer) scanDocumentEnd() {
+func (l *Lexer) scanDocumentEnd() bool {
+	if l.context.pos.indentLevel != 0 || !l.context.isFirstCharAtLine || (l.canPeek() && l.peekNextChar() != '.') || (l.canPeekN(1) && l.peek(1) != '.') {
+		return false
+	}
 	l.skipChar(2)
 	l.addToken(documentEndToken(l.context.pos.indentLevel))
+	return true
 }
 
 func (l *Lexer) scanDocumentStart() bool {
-	if l.peekNextChar() != '-' || l.peek(1) != '-' {
+	if l.context.pos.indentLevel != 0 || !l.context.isFirstCharAtLine || (l.canPeek() && l.peekNextChar() != '-') || (l.canPeekN(1) && l.peek(1) != '-') {
 		return false
 	}
 	l.skipChar(2)
@@ -201,15 +207,18 @@ func (l *Lexer) scanQuote() {
 			l.calculateIndentLevel()
 			l.skipChar(currentIndentLevel * l.context.indentNum)
 		}
-
 	}
-
+	l.skipChar(1)
 	l.addToken(quoteToken(l.context.pos.indentLevel, b.String()))
 }
 
-func (l *Lexer) scanSequence() {
+func (l *Lexer) scanSequence() bool {
+	if !l.context.isFirstCharAtLine || (l.canPeek() && !slices.Contains(whitespaces, l.peekNextChar())) {
+		return false
+	}
 	l.addToken(sequenceToken(l.context.pos.indentLevel))
 	l.context.previousIndentLevel = l.context.pos.indentLevel
+	return true
 }
 
 func (l *Lexer) scanMapKey() {
@@ -253,15 +262,19 @@ func (l *Lexer) scanTag() {
 	l.addToken(tagToken(l.context.pos.indentLevel, b.String()))
 }
 
-func (l *Lexer) scanFlowDelimiter() {
-	l.addToken(flowDelimiterToken(l.context.pos.indentLevel))
+func (l *Lexer) scanFlowDelimiter() bool {
+	if l.context.isFlow != 0 {
+		l.addToken(flowDelimiterToken(l.context.pos.indentLevel))
+		return true
+	}
+	return false
 }
 
-var alp = []rune{':', '{', '}', '[', ']', '#', '\n', '\r'}
+var alp = []rune{':', '{', '}', '[', ']', '#', '\n', '\r', ',', '.', '-'}
 
 func (l *Lexer) scanScalar() {
 	var b strings.Builder
-	for !slices.Contains(alp, l.peekCurrentChar()) {
+	for !slices.Contains(alp, l.peekCurrentChar()) || l.context.characterChecked {
 		b.WriteRune(l.peekCurrentChar())
 		l.nextChar()
 	}
@@ -270,6 +283,7 @@ func (l *Lexer) scanScalar() {
 }
 
 func (l *Lexer) scan() {
+Loop:
 	for l.canPeek() == true {
 		c := l.nextChar()
 		switch c {
@@ -293,17 +307,20 @@ func (l *Lexer) scan() {
 				continue
 			}
 		case ',':
-			l.scanFlowDelimiter()
-			continue
+			if l.scanFlowDelimiter() {
+				continue
+			}
 		case '.':
-			l.scanDocumentEnd()
-			continue
+			if l.scanDocumentEnd() {
+				break Loop
+			}
 		case '-':
 			if l.scanDocumentStart() {
 				continue
 			}
-			l.scanSequence()
-			continue
+			if l.scanSequence() {
+				continue
+			}
 		case '#':
 			if l.scanComment() {
 				continue
@@ -331,6 +348,7 @@ func (l *Lexer) scan() {
 			continue
 
 		}
+		l.context.characterChecked = true
 
 		l.scanScalar()
 
@@ -341,5 +359,5 @@ func (l *Lexer) scan() {
 func Scan(src []rune) []*Token {
 	lx := New(src)
 	lx.scan()
-	return lx.Tokens
+	return lx.tokens
 }
