@@ -34,6 +34,9 @@ func ProcessScalarType(nd ast.NodeValue) ast.NodeValue {
 	if nd, ok := toFloat(nd); ok {
 		return nd
 	}
+	if nd, ok := toFloatWithoutPoint(nd); ok {
+		return nd
+	}
 
 	nd, _ = toString(nd)
 	return nd
@@ -120,6 +123,34 @@ func toFloat(nd ast.NodeValue) (ast.NodeValue, bool) {
 		}
 	}
 	nd.Value = intpart
+	nd.Type = ast.FLOAT
+	return nd, true
+}
+
+func toFloatWithoutPoint(nd ast.NodeValue) (ast.NodeValue, bool) {
+	v := strings.TrimSpace(nd.Value)
+	res := ""
+	ue := false
+	sk := false
+	for i, el := range v {
+		if sk {
+			sk = false
+			continue
+		}
+		if unicode.IsDigit(el) {
+			res += string(el)
+		} else if (el == 'e' || el == 'E') && !ue {
+			res += string(el)
+			ue = true
+			if i+1 < len([]rune(v)) && v[i+1] == '-' || v[i+1] == '+' {
+				res += string(v[i+1])
+				sk = true
+			}
+		} else {
+			return nd, false
+		}
+	}
+	nd.Value = res
 	nd.Type = ast.FLOAT
 	return nd, true
 }

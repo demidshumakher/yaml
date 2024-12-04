@@ -1,0 +1,3 @@
+integer: 1234
+integer with tag: !!str 1234
+binarytag: !!binary c29tZSBzdHJpbmcgZXhhbXBsZQ==

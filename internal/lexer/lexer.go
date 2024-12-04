@@ -118,7 +118,7 @@ func (l *Lexer) scanFlowMapEnd() bool {
 }
 
 func (l *Lexer) scanMapDelimiter() bool {
-	//if !l.context.isFirstScalarsChar {
+	//if !l.context.isFirstScalarsChar && !l.context.isFirstCharAtLine {
 	//	return false
 	//}
 	l.addToken(mapDelimiterToken(l.context.pos.indentLevel))
@@ -161,7 +161,6 @@ func (l *Lexer) calculateIndentLevel() {
 	}
 	current := 0
 	if n != 0 {
-		// todo fix
 		current = n / l.context.indentNum
 	}
 	l.context.pos.indentLevel = current
@@ -289,7 +288,7 @@ func (l *Lexer) scanMultilineString() {
 			break
 		}
 		b.WriteRune(c)
-		l.context.isFirstCharAtLine = false
+		//l.context.isFirstCharAtLine = false
 	}
 	l.addToken(multiLineStringToken(l.context.pos.indentLevel, b.String()))
 }
