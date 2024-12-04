@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -14,9 +15,9 @@ type position struct {
 type context struct {
 	pos                 position
 	isFirstCharAtLine   bool
+	isFirstScalarsChar  bool
 	isAnchor            bool
 	isFlow              int
-	previousChar        rune
 	previousIndentLevel int
 	indentNum           int
 	characterChecked    bool
@@ -36,11 +37,11 @@ func New(src []rune) *Lexer {
 		buffer: src,
 		tokens: []*Token{},
 		context: context{
-			isFirstCharAtLine: true,
-			isAnchor:          false,
-			isFlow:            0,
-			previousChar:      0,
-			indentNum:         0,
+			isFirstCharAtLine:  true,
+			isFirstScalarsChar: true,
+			isAnchor:           false,
+			isFlow:             0,
+			indentNum:          0,
 			pos: position{
 				line:        0,
 				col:         0,
@@ -80,6 +81,10 @@ func (l *Lexer) peekPreviousChar() rune {
 	return l.peek(-2)
 }
 
+func (l *Lexer) canPeekPrevious() bool {
+	return l.index > 1
+}
+
 func (l *Lexer) skipChar(n int) {
 	l.index += n
 }
@@ -88,13 +93,23 @@ func (l *Lexer) addToken(token *Token) {
 	l.tokens = append(l.tokens, token)
 }
 
-func (l *Lexer) scanFlowMapStart() {
+func (l *Lexer) scanFlowMapStart() bool {
+	//if l.context.isFirstScalarsChar {
+	//	l.context.isFlow++
+	//	l.context.isFirstScalarsChar = true
+	//	l.addToken(flowMapStartToken(l.context.pos.indentLevel))
+	//	return true
+	//}
+	//return false
 	l.context.isFlow++
+	l.context.isFirstScalarsChar = true
 	l.addToken(flowMapStartToken(l.context.pos.indentLevel))
+	return true
 }
 
 func (l *Lexer) scanFlowMapEnd() bool {
 	if l.context.isFlow != 0 {
+		l.context.isFirstScalarsChar = false
 		l.addToken(flowMapEndToken(l.context.pos.indentLevel))
 		l.context.isFlow--
 		return true
@@ -102,17 +117,26 @@ func (l *Lexer) scanFlowMapEnd() bool {
 	return false
 }
 
-func (l *Lexer) scanMapDelimiter() {
+func (l *Lexer) scanMapDelimiter() bool {
+	//if !l.context.isFirstScalarsChar {
+	//	return false
+	//}
 	l.addToken(mapDelimiterToken(l.context.pos.indentLevel))
+	l.context.isFirstScalarsChar = true
+	return true
 }
 
-func (l *Lexer) scanFlowArrayStart() {
+func (l *Lexer) scanFlowArrayStart() bool {
 	l.context.isFlow++
+	l.context.isFirstScalarsChar = true
 	l.addToken(flowArrayStartToken(l.context.pos.indentLevel))
+	return true
 }
 
 func (l *Lexer) scanFlowArrayEnd() bool {
+	l.context.isFirstScalarsChar = false
 	if l.context.isFlow != 0 {
+		l.context.isFirstScalarsChar = false
 		l.context.isFlow--
 		l.addToken(flowArrayEndToken(l.context.pos.indentLevel))
 		return true
@@ -126,9 +150,11 @@ func (l *Lexer) calculateIndentLevel() {
 		if l.peek(n) == '\r' || l.peek(n) == '\n' {
 			l.skipChar(n + 1)
 			l.calculateIndentLevel()
+		} else {
+			n++
 		}
-		n++
 	}
+	l.context.characterChecked = false
 
 	if l.context.previousIndentLevel == 0 {
 		l.context.indentNum = n
@@ -143,6 +169,7 @@ func (l *Lexer) calculateIndentLevel() {
 
 func (l *Lexer) scanNewLine() {
 	l.context.isFirstCharAtLine = true
+	l.context.isFirstScalarsChar = true
 	l.context.pos.line++
 	l.context.previousIndentLevel = l.context.pos.indentLevel
 	l.calculateIndentLevel()
@@ -153,6 +180,7 @@ func (l *Lexer) scanDocumentEnd() bool {
 	if l.context.pos.indentLevel != 0 || !l.context.isFirstCharAtLine || (l.canPeek() && l.peekNextChar() != '.') || (l.canPeekN(1) && l.peek(1) != '.') {
 		return false
 	}
+	l.context.isFirstScalarsChar = false
 	l.skipChar(2)
 	l.addToken(documentEndToken(l.context.pos.indentLevel))
 	return true
@@ -162,16 +190,17 @@ func (l *Lexer) scanDocumentStart() bool {
 	if l.context.pos.indentLevel != 0 || !l.context.isFirstCharAtLine || (l.canPeek() && l.peekNextChar() != '-') || (l.canPeekN(1) && l.peek(1) != '-') {
 		return false
 	}
+	l.context.isFirstScalarsChar = false
 	l.skipChar(2)
 	l.addToken(documentStartToken(l.context.pos.indentLevel))
 	return true
 }
 
 func (l *Lexer) scanComment() bool {
-	if !slices.Contains(whitespaces, l.peekPreviousChar()) {
+	if l.canPeekPrevious() && !slices.Contains(whitespaces, l.peekPreviousChar()) {
 		return false
 	}
-	for l.peekNextChar() != '\n' || l.peekNextChar() != '\r' {
+	for l.canPeek() && l.peekNextChar() != '\n' && l.peekNextChar() != '\r' {
 		l.skipChar(1)
 	}
 	return true
@@ -182,6 +211,7 @@ func (l *Lexer) scanAnchor() {
 	for !slices.Contains(whitespaces, l.peekNextChar()) {
 		b.WriteRune(l.nextChar())
 	}
+	l.context.isFirstScalarsChar = false
 	l.addToken(anchorToken(l.context.pos.indentLevel, b.String()))
 }
 
@@ -190,11 +220,13 @@ func (l *Lexer) scanAlias() {
 	for !slices.Contains(whitespaces, l.peekNextChar()) {
 		b.WriteRune(l.nextChar())
 	}
+	l.context.isFirstScalarsChar = false
 	l.addToken(aliasToken(l.context.pos.indentLevel, b.String()))
 }
 
 func (l *Lexer) scanQuote() {
 	quotationMark := l.peekCurrentChar()
+	l.context.isFirstScalarsChar = false
 	var b strings.Builder
 	for l.peekNextChar() != quotationMark {
 		b.WriteRune(l.nextChar())
@@ -209,40 +241,47 @@ func (l *Lexer) scanQuote() {
 		}
 	}
 	l.skipChar(1)
-	l.addToken(quoteToken(l.context.pos.indentLevel, b.String()))
+	l.addToken(scalarToken(l.context.pos.indentLevel, b.String()))
 }
 
 func (l *Lexer) scanSequence() bool {
-	if !l.context.isFirstCharAtLine || (l.canPeek() && !slices.Contains(whitespaces, l.peekNextChar())) {
+	if (!l.context.isFirstScalarsChar && !l.context.isFirstCharAtLine) || (l.canPeek() && !slices.Contains(whitespaces, l.peekNextChar())) {
 		return false
 	}
+	l.context.isFirstScalarsChar = true
 	l.addToken(sequenceToken(l.context.pos.indentLevel))
 	l.context.previousIndentLevel = l.context.pos.indentLevel
 	return true
 }
 
-func (l *Lexer) scanMapKey() {
+func (l *Lexer) scanMapKey() bool {
+	if !l.context.isFirstCharAtLine {
+		return false
+	}
 	l.addToken(complexMapKeyToken(l.context.pos.indentLevel))
+	return true
 }
 
 func (l *Lexer) scanMultilineString() {
 	sep := l.peekCurrentChar()
+	l.context.isFirstScalarsChar = false
 	stringIndentLevel := l.context.pos.indentLevel
 	var b strings.Builder
 	for {
 		c := l.nextChar()
+
 		if c == '\r' {
 			c = l.nextChar()
 		}
 		if c == '\n' {
-			var t rune = '\n'
+			t := "\\n"
 			if sep == '>' {
-				t = ' '
+				t = " "
 			}
 			l.context.pos.line++
 			l.calculateIndentLevel()
 			if l.context.pos.indentLevel > stringIndentLevel {
-				b.WriteRune(t)
+				b.WriteString(t)
 				b.WriteString(strings.Repeat(" ", l.context.pos.indentLevel-stringIndentLevel))
 				l.skipChar(stringIndentLevel * l.context.indentNum)
 				continue
@@ -250,20 +289,27 @@ func (l *Lexer) scanMultilineString() {
 			break
 		}
 		b.WriteRune(c)
+		l.context.isFirstCharAtLine = false
 	}
 	l.addToken(multiLineStringToken(l.context.pos.indentLevel, b.String()))
 }
 
-func (l *Lexer) scanTag() {
+func (l *Lexer) scanTag() bool {
+	if !l.context.isFirstScalarsChar && !l.context.isFirstCharAtLine {
+		return false
+	}
+	l.context.isFirstScalarsChar = false
 	var b strings.Builder
 	for !slices.Contains(whitespaces, l.peekNextChar()) {
 		b.WriteRune(l.nextChar())
 	}
 	l.addToken(tagToken(l.context.pos.indentLevel, b.String()))
+	return true
 }
 
 func (l *Lexer) scanFlowDelimiter() bool {
 	if l.context.isFlow != 0 {
+		l.context.isFirstScalarsChar = false
 		l.addToken(flowDelimiterToken(l.context.pos.indentLevel))
 		return true
 	}
@@ -276,9 +322,16 @@ func (l *Lexer) scanScalar() {
 	var b strings.Builder
 	for !slices.Contains(alp, l.peekCurrentChar()) || l.context.characterChecked {
 		b.WriteRune(l.peekCurrentChar())
+		if !l.canPeekN(1) {
+			l.addToken(scalarToken(l.context.pos.indentLevel, b.String()))
+			return
+		}
 		l.nextChar()
 	}
 	l.skipChar(-1)
+	if len(strings.TrimSpace(b.String())) == 0 {
+		return
+	}
 	l.addToken(scalarToken(l.context.pos.indentLevel, b.String()))
 }
 
@@ -290,18 +343,21 @@ Loop:
 		case '\x20', '\x09':
 			continue
 		case ':':
-			l.scanMapDelimiter()
-			continue
+			if l.scanMapDelimiter() {
+				continue
+			}
 		case '{':
-			l.scanFlowMapStart()
-			continue
+			if l.scanFlowMapStart() {
+				continue
+			}
 		case '}':
 			if l.scanFlowMapEnd() {
 				continue
 			}
 		case '[':
-			l.scanFlowArrayStart()
-			continue
+			if l.scanFlowArrayStart() {
+				continue
+			}
 		case ']':
 			if l.scanFlowArrayEnd() {
 				continue
@@ -328,15 +384,16 @@ Loop:
 		case '\n', '\r':
 			l.scanNewLine()
 			continue
-		case '<':
-			// todo
 		case '|', '>':
 			l.scanMultilineString()
 		case '!':
-			l.scanTag()
+			if l.scanTag() {
+				continue
+			}
 		case '?':
-			l.scanMapKey()
-			continue
+			if l.scanMapKey() {
+				continue
+			}
 		case '&':
 			l.scanAnchor()
 			continue
@@ -349,15 +406,72 @@ Loop:
 
 		}
 		l.context.characterChecked = true
-
 		l.scanScalar()
 
-		l.context.previousChar = c
 	}
 }
+
+func (l *Lexer) increaseLevel() {
+	inc := 0
+	l.context.isFlow = 0
+	for i, el := range l.tokens {
+		switch el.Type {
+		case NEW_LINE:
+			inc = 0
+		case FLOW_MAP_START, FLOW_ARRAY_START:
+			inc++
+			l.context.isFlow++
+			el.Level--
+		case FLOW_MAP_END, FLOW_ARRAY_END:
+			inc--
+			l.context.isFlow--
+		case SEQUENCE, COMMPLEX_MAP_KEY:
+			inc++
+			el.Level--
+		case MAP_DELIMITER:
+			if l.context.isFlow == 0 {
+				inc++
+				el.Level--
+			} else if i+1 < len(l.tokens) {
+				l.tokens[i+1].Level++
+			}
+		}
+		if el.Value == "map" {
+			fmt.Println(inc)
+		}
+		el.Level += inc
+
+	}
+}
+
+func (l *Lexer) mergeScalars() {
+	new_tokens := make([]*Token, 0, len(l.tokens))
+	for i := 0; i < len(l.tokens); i++ {
+		if l.tokens[i].Type == SCALAR {
+			current_scalar := l.tokens[i]
+			if i+1 < len(l.tokens) {
+				for nx := l.tokens[i+1]; nx.Type == SCALAR && nx.Level == current_scalar.Level; nx = l.tokens[i+1] {
+					current_scalar.Value += nx.Value
+					i++
+					if i+1 >= len(l.tokens) {
+						break
+					}
+				}
+			}
+			new_tokens = append(new_tokens, current_scalar)
+		} else if l.tokens[i].Type != FLOW_DELIMITER {
+			new_tokens = append(new_tokens, l.tokens[i])
+		}
+	}
+	l.tokens = new_tokens
+}
+
+//func increase todo fix
 
 func Scan(src []rune) []*Token {
 	lx := New(src)
 	lx.scan()
+	lx.mergeScalars()
+	lx.increaseLevel()
 	return lx.tokens
 }

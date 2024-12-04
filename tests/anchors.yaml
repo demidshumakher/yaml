@@ -1,0 +1,6 @@
+firstanchor: &base
+  - item1
+  - item 2
+  - item3
+
+alias: *base

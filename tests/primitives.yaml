@@ -1,0 +1,17 @@
+string: simple string
+double_quote: "quote1"
+single_quote: 'quote2'
+integer: 101
+negitiveInteger: -102
+nan: .nan
+inf: .inf
+negInf: -.inf
+null: null
+float1: 1.1
+float2: 0.0005
+float3: -101.0001
+float4: -101
+float5: -0.e+3
+float6: 0.1e-3
+float7: 0.1E+5
+# float8: 1e-6 unsupported

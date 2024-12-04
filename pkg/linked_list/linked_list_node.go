@@ -5,25 +5,47 @@ import (
 	"strings"
 )
 
-type linkedListNode[V any] struct {
+type LinkedListNode[V any] struct {
 	Value V
-	Next  *linkedListNode[V]
-	Child *linkedListNode[V]
+	Next  *LinkedListNode[V]
+	Child *LinkedListNode[V]
 }
 
-func newNode[V any](value V) *linkedListNode[V] {
-	return &linkedListNode[V]{
+func NewNode[V any](value V) *LinkedListNode[V] {
+	return &LinkedListNode[V]{
 		Value: value,
 	}
 }
 
-func (ll *linkedListNode[V]) String() string {
+//func (ll *LinkedListNode[V]) Iter() iter.Seq[V] {
+//	return func(yield func(v V) bool) {
+//		node := ll
+//		for node != nil {
+//			if !yield(node.Value) {
+//				return
+//			}
+//			node = node.Next
+//		}
+//	}
+//}
+
+func (ll *LinkedListNode[V]) String() string {
+	return ll._string(0)
+}
+
+func (ll *LinkedListNode[V]) _string(n int) string {
 	node := ll
-	var b strings.Builder
-	b.WriteString(" { ")
-	for node != nil {
-		b.WriteString(fmt.Sprintf("%s : %s", node.Value, node.Child.String()))
+	if node == nil {
+		return ""
 	}
-	b.WriteString(" } ")
+	var b strings.Builder
+	tabs := strings.Repeat("\t", n)
+
+	b.WriteString(fmt.Sprintf("%s{\n", tabs))
+	for node != nil {
+		b.WriteString(fmt.Sprintf("\t%s{%s :\n%s}", tabs, node.Value, node.Child._string(n+1)))
+		node = node.Next
+	}
+	b.WriteString(fmt.Sprintf("%s}\n", tabs))
 	return b.String()
 }

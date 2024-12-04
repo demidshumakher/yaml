@@ -1,0 +1,9 @@
+array: [1,2,3,4, [5,6,7, [8]], { "stringkey":"stringvalue", nmap:{key:val, key2:val}}]
+
+
+map: {
+       "key": value,
+       integer: 1234,
+       float: 1.01,
+       arr: [5, 7, 101, 5+7, {key:val, nesmap:{key:val}}]
+}
