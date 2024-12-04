@@ -56,7 +56,6 @@ func main() {
 			t = t[2:]
 		}
 		for _, lesson := range t {
-			//fmt.Println(lesson)
 			dayData.Lessons = append(dayData.Lessons, Lesson{
 				Subject:     lesson[1],
 				Type:        lesson[2],
