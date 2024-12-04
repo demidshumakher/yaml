@@ -9,17 +9,33 @@ import (
 	"os"
 )
 
-type temp struct {
-	wr io.Writer
-}
-
-func (t temp) Write(p []byte) (n int, err error) {
-	fmt.Println(string(p))
-	return t.wr.Write(p)
+func myConverter(input []rune, output string) error {
+	ast := parser.Parse(lexer.Scan(input))
+	fl, err := os.Create(output)
+	if err != nil {
+		return err
+	}
+	defer fl.Close()
+	json.NewJsonBackend(fl, ast).Run()
+	//toml.NewTomlBackend(fl, ast).Run()
+	return nil
 }
 
 func main() {
-	fl, err := os.Open("tests/anchors.yaml")
+
+	if len(os.Args) < 2 {
+		fmt.Println("give a input file")
+		return
+	}
+	input := os.Args[1]
+	var output string
+	if len(os.Args) < 3 {
+		output = "out.json"
+	} else {
+		output = os.Args[2]
+	}
+
+	fl, err := os.Open(input)
 	if err != nil {
 		panic(err)
 	}
@@ -27,19 +43,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	tokens := lexer.Scan([]rune(string(bf)))
-	ast := parser.Parse(tokens)
-	file, err := os.Create("out.json")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	bck := json.NewJsonBackend(file, ast)
-	fmt.Println("OK")
-	bck.Run()
-	fmt.Println(ast)
-	//fmt.Println(tokens)
-	fmt.Println("END")
-
+	myConverter([]rune(string(bf)), output)
 }

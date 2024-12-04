@@ -241,7 +241,7 @@ func (l *Lexer) scanQuote() {
 		}
 	}
 	l.skipChar(1)
-	l.addToken(scalarToken(l.context.pos.indentLevel, b.String()))
+	l.addToken(quoteToken(l.context.pos.indentLevel, b.String()))
 }
 
 func (l *Lexer) scanSequence() bool {
@@ -466,12 +466,33 @@ func (l *Lexer) mergeScalars() {
 	l.tokens = new_tokens
 }
 
-//func increase todo fix
+func (l *Lexer) mergeQuotes() {
+	new_tokens := make([]*Token, 0, len(l.tokens))
+	for i := 0; i < len(l.tokens); i++ {
+		if l.tokens[i].Type == QUOTE {
+			current_scalar := l.tokens[i]
+			if i+1 < len(l.tokens) {
+				for nx := l.tokens[i+1]; nx.Type == QUOTE && nx.Level == current_scalar.Level; nx = l.tokens[i+1] {
+					current_scalar.Value += nx.Value
+					i++
+					if i+1 >= len(l.tokens) {
+						break
+					}
+				}
+			}
+			new_tokens = append(new_tokens, current_scalar)
+		} else if l.tokens[i].Type != FLOW_DELIMITER {
+			new_tokens = append(new_tokens, l.tokens[i])
+		}
+	}
+	l.tokens = new_tokens
+}
 
 func Scan(src []rune) []*Token {
 	lx := New(src)
 	lx.scan()
 	lx.mergeScalars()
+	lx.mergeQuotes()
 	lx.increaseLevel()
 	return lx.tokens
 }
