@@ -39,7 +39,6 @@ func (p *Parser) parse() *ast.AST {
 	for i := 0; i < len(p.tokens); i++ {
 		el := p.tokens[i]
 		// todo complex map key пока что пофиг, их все равно в json не запихнуть
-		//fmt.Println(el)
 		switch el.Type {
 		case lexer.QUOTE, lexer.MULTILINE_STRING:
 			if i+1 < len(p.tokens) && p.tokens[i+1].Type == lexer.MAP_DELIMITER {

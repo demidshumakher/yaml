@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -164,6 +163,9 @@ func (l *Lexer) calculateIndentLevel() {
 		current = n / l.context.indentNum
 	}
 	l.context.pos.indentLevel = current
+	//if l.context.isFlow != 0 {
+	//	l.context.pos.indentLevel = l.context.previousIndentLevel
+	//}
 }
 
 func (l *Lexer) scanNewLine() {
@@ -416,7 +418,9 @@ func (l *Lexer) increaseLevel() {
 	for i, el := range l.tokens {
 		switch el.Type {
 		case NEW_LINE:
-			inc = 0
+			if l.context.isFlow == 0 {
+				inc = 0
+			}
 		case FLOW_MAP_START, FLOW_ARRAY_START:
 			inc++
 			l.context.isFlow++
@@ -434,9 +438,6 @@ func (l *Lexer) increaseLevel() {
 			} else if i+1 < len(l.tokens) {
 				l.tokens[i+1].Level++
 			}
-		}
-		if el.Value == "map" {
-			fmt.Println(inc)
 		}
 		el.Level += inc
 

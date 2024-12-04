@@ -33,15 +33,15 @@ func (bc *JsonBackend) writeFloat(el *linked_list.LinkedListNode[ast.NodeValue])
 }
 
 func (bc *JsonBackend) writeFloatNegatifeInf(el *linked_list.LinkedListNode[ast.NodeValue]) {
-	bc.out.Write([]byte("-Infinity"))
+	bc.out.Write([]byte("\"-Infinity\""))
 }
 
 func (bc *JsonBackend) writeFloatPossitiveInf(el *linked_list.LinkedListNode[ast.NodeValue]) {
-	bc.out.Write([]byte("Infinity"))
+	bc.out.Write([]byte("\"Infinity\""))
 }
 
 func (bc *JsonBackend) writeFloatNan(el *linked_list.LinkedListNode[ast.NodeValue]) {
-	bc.out.Write([]byte("NaN"))
+	bc.out.Write([]byte("\"NaN\""))
 }
 
 func (bc *JsonBackend) writeNull(el *linked_list.LinkedListNode[ast.NodeValue]) {
@@ -120,7 +120,6 @@ func (bc *JsonBackend) write(el *linked_list.LinkedListNode[ast.NodeValue]) *lin
 	if el == nil {
 		return nil
 	}
-	//fmt.Println(el.Value)
 	switch el.Value.Type {
 	case ast.ARRAY_ELEMENT:
 		return bc.writeArrayElement(el)

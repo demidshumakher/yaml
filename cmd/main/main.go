@@ -11,7 +11,8 @@ import (
 )
 
 func myConverter(input []rune, output string, tp bool) error {
-	ast := parser.Parse(lexer.Scan(input))
+	tokens := lexer.Scan(input)
+	ast := parser.Parse(tokens)
 	fl, err := os.Create(output)
 	if err != nil {
 		return err

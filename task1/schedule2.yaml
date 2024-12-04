@@ -1,7 +1,5 @@
 data:
   - day_number: 1
-    week_number: 16
-    date: '2024-12-02'
     lessons:
       - subject: Линейная алгебра (продвинутый уровень)
         type: Лекции
@@ -16,12 +14,10 @@ data:
         time_start: '17:00'
         time_end: '18:30'
         teacher_name: Покидова Марина Владимировна
-        room: ауд. 2426 (2426)
+        room: 'ауд. 2426 (2426)'
         building: 'Кронверкский пр., д.49, лит.А'
         group: Лин Алг Прод 11.1
   - day_number: 6
-    week_number: 16
-    date: '2024-12-07'
     lessons:
       - subject: Математический анализ (продвинутый уровень)
         type: Лекции

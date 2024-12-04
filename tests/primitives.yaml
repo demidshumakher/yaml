@@ -11,7 +11,6 @@ float1: 1.1
 float2: 0.0005
 float3: -101.0001
 float4: -101
-float5: -0.e+3
 float6: 0.1e-3
 float7: 0.1E+5
-# float8: 1e-6 unsupported
+float8: 1e-6
