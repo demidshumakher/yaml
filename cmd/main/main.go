@@ -6,11 +6,13 @@ import (
 	"github.com/demidshumakher/yaml/internal/backend/toml"
 	"github.com/demidshumakher/yaml/internal/lexer"
 	"github.com/demidshumakher/yaml/internal/parser"
+	"github.com/ghodss/yaml"
 	"io"
+	"io/ioutil"
 	"os"
 )
 
-func myConverter(input []rune, output string, tp bool) error {
+func myConverter(input []rune, output string, Istoml bool) error {
 	tokens := lexer.Scan(input)
 	ast := parser.Parse(tokens)
 	fl, err := os.Create(output)
@@ -18,7 +20,8 @@ func myConverter(input []rune, output string, tp bool) error {
 		return err
 	}
 	defer fl.Close()
-	if tp {
+	fmt.Println(ast)
+	if Istoml {
 		toml.NewTomlBackend(fl, ast).Run()
 	} else {
 		json.NewJsonBackend(fl, ast).Run()
@@ -39,11 +42,17 @@ func main() {
 	} else {
 		output = os.Args[2]
 	}
-	tp := false
+	Istoml := false
+	lib := false
 	if len(os.Args) > 3 {
-		tp = os.Args[3] == "toml"
+		Istoml = os.Args[3] == "toml"
+		lib = os.Args[3] == "lib"
 	}
 
+	if lib {
+		lib_Sol(input, output)
+		return
+	}
 	fl, err := os.Open(input)
 	if err != nil {
 		panic(err)
@@ -52,5 +61,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	myConverter([]rune(string(bf)), output, tp)
+	myConverter([]rune(string(bf)), output, Istoml)
+}
+
+func lib_Sol(input, output string) {
+	file, _ := os.Open(input)
+	defer file.Close()
+	data, _ := ioutil.ReadAll(file)
+	data, _ = yaml.YAMLToJSON(data)
+	fl, _ := os.Create(output)
+	defer fl.Close()
+	fl.Write(data)
 }

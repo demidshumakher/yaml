@@ -137,7 +137,6 @@ func (bc *TomlBackend) write(el *linked_list.LinkedListNode[ast.NodeValue]) *lin
 	if el == nil {
 		return nil
 	}
-	//fmt.Println(el.Value)
 	switch el.Value.Type {
 	case ast.ARRAY_ELEMENT:
 		return bc.writeArrayElement(el)

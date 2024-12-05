@@ -6,3 +6,5 @@ sequence:
     - item 5
   - map: value
 
+str: "quote\" asdjklf"
+
